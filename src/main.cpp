@@ -1,57 +1,51 @@
 #include <Arduino.h>
-#include <Wire.h> //I2C Arduino Library
+#include "Wire.h"
+#include "I2Cdev.h"
+#include "HMC5883L.h"
 
-#define addr 0x0D // I2C Address for The HMC5883
+// compass variables
+HMC5883L Compass;
+int16_t mx, my, mz;
+float declination = -4.4; // medellin inclination
 
-float declination = -4.4; //medellin inclination
+int analizeCompass();
 
 void setup()
 {
 
   Serial.begin(115200);
-  Wire.begin();
+  Wire.begin(GPIO_NUM_21, GPIO_NUM_22);
+  Compass.initialize();
+  Wire.setClock(100000L);
+  pinMode(GPIO_NUM_21, INPUT_PULLUP);
+  pinMode(GPIO_NUM_22, INPUT_PULLUP);
 
-  Wire.beginTransmission(addr); // start talking
-  Wire.write(0x09);             // Set the Register
-  Wire.write(0x1D);             // Tell the HMC5883 to Continuously Measure
-  Wire.endTransmission();
 }
 
 void loop()
 {
+  delay(100);
+  analizeCompass();
+}
 
-  int x, y, z; // triple axis data
+int analizeCompass()
+{ // measures compas and outputs the correct audio id to play
 
-  // Tell the HMC what regist to begin writing data into
-  Wire.beginTransmission(addr);
-  Wire.write(0x00); // start with register 3.
-  Wire.endTransmission();
-
-  // Read the data.. 2 bytes for each axis.. 6 total bytes
-  Wire.requestFrom(addr, 6);
-  if (6 <= Wire.available())
-  {
-    x = Wire.read() << 8; // MSB x
-    x |= Wire.read();     // LSB x
-    z = Wire.read() << 8; // MSB z
-    z |= Wire.read();     // LSB z
-    y = Wire.read() << 8; // MSB y
-    y |= Wire.read();     // LSB y
-  }
-
-  
-
-  float theta = atan2(y, x);
+  Compass.getHeading(&mx, &my, &mz);
+  // There is likely a spurious read in the i2c buffer, I reading again to discard previous reading and apply a delay.
+  // TODO: fix this code to improve performance
+  delay(5);
+  Compass.getHeading(&mx, &my, &mz);
+  float theta = atan2(my, mx);
   theta = theta * (180 / M_PI);
   theta -= declination;
   // 186 degrees is the factor of correction because of the positioning of the sensor in the case
   // I measured the difference using a digital compass in a mobile phone as a reference device
   theta -= 186;
 
-  if (theta < 0) theta += 360;
+  if (theta < 0)
+    theta += 360;
 
-  Serial.print("Degree: °");
+  Serial.print("compass reading: ");
   Serial.println(theta);
-
-  delay(500);
 }
