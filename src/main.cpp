@@ -1,51 +1,66 @@
 #include <Arduino.h>
-#include "Wire.h"
-#include "I2Cdev.h"
-#include "HMC5883L.h"
+#include <SerialMP3Player.h>
 
-// compass variables
-HMC5883L Compass;
-int16_t mx, my, mz;
-float declination = -4.4; // medellin inclination
+const int trigPin = 5;
+const int echoPin = 18;
+const int ultraSoundButton = 19;
+int isUltraSoundActive = LOW;
 
-int analizeCompass();
+SerialMP3Player mp3(RX,TX);
+
+//define sound speed in cm/uS
+#define SOUND_SPEED 0.034
+
+long duration;
+float distanceCm;
+float distanceInch;
+
+// Function declarations
+int getDistance();
 
 void setup()
 {
-
-  Serial.begin(115200);
-  Wire.begin(GPIO_NUM_21, GPIO_NUM_22);
-  Compass.initialize();
-  Wire.setClock(100000L);
-  pinMode(GPIO_NUM_21, INPUT_PULLUP);
-  pinMode(GPIO_NUM_22, INPUT_PULLUP);
-
+  mp3.showDebug(1);
+  Serial.begin(9600);
+  pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+  pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+  pinMode(ultraSoundButton,INPUT_PULLDOWN);
+  mp3.begin(9600);        // start mp3-communication
+  delay(500);             // wait for init
+  mp3.sendCommand(CMD_SEL_DEV, 0, 2);   //select sd-card
+  mp3.setVol(30);
+  delay(500);
+  mp3.qTTracks();
+  delay(500);
 }
 
 void loop()
 {
+  isUltraSoundActive = digitalRead(ultraSoundButton);
+  if(isUltraSoundActive == HIGH){
+    getDistance();
+    delay(100);
+  }
   delay(100);
-  analizeCompass();
 }
 
-int analizeCompass()
-{ // measures compas and outputs the correct audio id to play
-
-  Compass.getHeading(&mx, &my, &mz);
-  // There is likely a spurious read in the i2c buffer, I reading again to discard previous reading and apply a delay.
-  // TODO: fix this code to improve performance
-  delay(5);
-  Compass.getHeading(&mx, &my, &mz);
-  float theta = atan2(my, mx);
-  theta = theta * (180 / M_PI);
-  theta -= declination;
-  // 186 degrees is the factor of correction because of the positioning of the sensor in the case
-  // I measured the difference using a digital compass in a mobile phone as a reference device
-  theta -= 186;
-
-  if (theta < 0)
-    theta += 360;
-
-  Serial.print("compass reading: ");
-  Serial.println(theta);
+int getDistance(){
+  // Clears the trigPin
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  
+  // Calculate the distance
+  distanceCm = duration * SOUND_SPEED/2;
+  
+  // Prints the distance in the Serial Monitor
+  Serial.print("Distance (cm): ");
+  Serial.println(distanceCm);
+  return distanceCm;
 }
