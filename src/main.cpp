@@ -20,18 +20,18 @@ int getDistance();
 
 void setup()
 {
-  mp3.showDebug(1);
+  //mp3.showDebug(1);
   Serial.begin(9600);
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPin, INPUT); // Sets the echoPin as an Input
   pinMode(ultraSoundButton,INPUT_PULLDOWN);
-  mp3.begin(9600);        // start mp3-communication
-  delay(500);             // wait for init
-  mp3.sendCommand(CMD_SEL_DEV, 0, 2);   //select sd-card
-  mp3.setVol(30);
-  delay(500);
-  mp3.qTTracks();
-  delay(500);
+  //mp3.begin(9600);        // start mp3-communication
+  //delay(500);             // wait for init
+  //mp3.sendCommand(CMD_SEL_DEV, 0, 2);   //select sd-card
+  //mp3.setVol(30);
+  //delay(500);
+  //mp3.qTTracks();
+  //delay(500);
 }
 
 void loop()
